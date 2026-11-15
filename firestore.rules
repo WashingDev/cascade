@@ -1,0 +1,161 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidProject(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+             data.description is string && data.description.size() <= 500 &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 30 &&
+             data.accentColor in ['cobalt', 'terracotta', 'emerald', 'amber', 'plum', 'teal'] &&
+             data.status in ['active', 'paused', 'completed', 'archived'] &&
+             (!('targetDateMs' in data) || (data.targetDateMs is int && data.targetDateMs >= 0));
+    }
+
+    function isValidMilestone(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.projectId is string && isValidId(data.projectId) &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.description is string && data.description.size() <= 400 &&
+             data.targetDateMs is int && data.targetDateMs > 0 &&
+             data.isReached is bool &&
+             (!('reachedAtMs' in data) || (data.reachedAtMs is int && data.reachedAtMs >= 0));
+    }
+
+    function isValidTask(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.projectId is string && isValidId(data.projectId) &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 140 &&
+             data.notes is string && data.notes.size() <= 500 &&
+             data.isCompleted is bool &&
+             data.priority in ['low', 'medium', 'high', 'urgent'] &&
+             (!('dueDateMs' in data) || (data.dueDateMs is int && data.dueDateMs >= 0)) &&
+             (!('milestoneId' in data) || (data.milestoneId is string && isValidId(data.milestoneId))) &&
+             (!('completedAtMs' in data) || (data.completedAtMs is int && data.completedAtMs >= 0));
+    }
+
+    match /users/{userId} {
+      match /projects/{projectId} {
+        allow get: if isOwner(userId) && isValidId(projectId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(projectId) &&
+                         incoming().userId == userId &&
+                         incoming().keys().hasAll(['userId', 'title', 'description', 'category', 'accentColor', 'status', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'description', 'category', 'accentColor', 'status', 'targetDateMs', 'createdAt', 'updatedAt']) &&
+                         isValidProject(incoming()) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time;
+
+        allow update: if isOwner(userId) &&
+                         isValidId(projectId) &&
+                         isValidProject(incoming()) &&
+                         existing().status != 'archived' &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time &&
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'category', 'accentColor', 'targetDateMs', 'status', 'updatedAt'])
+                         );
+
+        allow delete: if isOwner(userId) && isValidId(projectId);
+      }
+
+      match /milestones/{milestoneId} {
+        allow get: if isOwner(userId) && isValidId(milestoneId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(milestoneId) &&
+                         incoming().userId == userId &&
+                         incoming().keys().hasAll(['userId', 'projectId', 'title', 'description', 'targetDateMs', 'isReached', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'projectId', 'title', 'description', 'targetDateMs', 'isReached', 'reachedAtMs', 'createdAt', 'updatedAt']) &&
+                         isValidMilestone(incoming()) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time &&
+                         exists(/databases/$(database)/documents/users/$(userId)/projects/$(incoming().projectId));
+
+        allow update: if isOwner(userId) &&
+                         isValidId(milestoneId) &&
+                         isValidMilestone(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().projectId == existing().projectId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time &&
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['isReached', 'reachedAtMs', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'targetDateMs', 'isReached', 'reachedAtMs', 'updatedAt'])
+                         );
+
+        allow delete: if isOwner(userId) && isValidId(milestoneId);
+      }
+
+      match /tasks/{taskId} {
+        allow get: if isOwner(userId) && isValidId(taskId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(taskId) &&
+                         incoming().userId == userId &&
+                         incoming().keys().hasAll(['userId', 'projectId', 'title', 'notes', 'isCompleted', 'priority', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'projectId', 'milestoneId', 'title', 'notes', 'isCompleted', 'priority', 'dueDateMs', 'completedAtMs', 'createdAt', 'updatedAt']) &&
+                         isValidTask(incoming()) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time &&
+                         exists(/databases/$(database)/documents/users/$(userId)/projects/$(incoming().projectId)) &&
+                         (!('milestoneId' in incoming()) || exists(/databases/$(database)/documents/users/$(userId)/milestones/$(incoming().milestoneId)));
+
+        allow update: if isOwner(userId) &&
+                         isValidId(taskId) &&
+                         isValidTask(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().projectId == existing().projectId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time &&
+                         (!('milestoneId' in incoming()) || ('milestoneId' in existing() && incoming().milestoneId == existing().milestoneId) || exists(/databases/$(database)/documents/users/$(userId)/milestones/$(incoming().milestoneId))) &&
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['isCompleted', 'completedAtMs', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['title', 'notes', 'priority', 'dueDateMs', 'milestoneId', 'isCompleted', 'completedAtMs', 'updatedAt'])
+                         );
+
+        allow delete: if isOwner(userId) && isValidId(taskId);
+      }
+    }
+  }
+}

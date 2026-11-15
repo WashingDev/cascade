@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Cadence</string>
+    <string name="sign_in_tagline">One calm workspace for personal projects, tasks, deadlines, and milestones.</string>
+    <string name="sign_in_with_google">Sign in with Google</string>
+    <string name="sign_out">Sign out</string>
+    <string name="nav_dashboard">Overview</string>
+    <string name="nav_projects">Projects</string>
+    <string name="nav_deadlines">Deadlines</string>
+    <string name="nav_milestones">Milestones</string>
+    <string name="action_new_project">New Project</string>
+    <string name="action_new_task">New Task</string>
+    <string name="action_new_milestone">New Milestone</string>
+    <string name="empty_projects_title">Start your first project</string>
+    <string name="empty_projects_body">Organize goals into clear projects with actionable tasks, target deadlines, and milestones.</string>
+    <string name="error_generic_load">Unable to sync your workspace right now.</string>
+</resources>

@@ -1,0 +1,167 @@
+{
+  "entities": {
+    "Project": {
+      "title": "Project",
+      "description": "A personal project tracked in the central dashboard.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated owner UID."
+        },
+        "title": {
+          "type": "string",
+          "description": "Project title (1-100 chars)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Short project summary (0-500 chars)."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category label such as Work, Creative, Home, Learning, Health, or Personal."
+        },
+        "accentColor": {
+          "type": "string",
+          "enum": ["cobalt", "terracotta", "emerald", "amber", "plum", "teal"],
+          "description": "Color token used to visually tag the project."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "paused", "completed", "archived"],
+          "description": "Current lifecycle status of the project."
+        },
+        "targetDateMs": {
+          "type": "integer",
+          "description": "Optional target deadline epoch milliseconds."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server-generated creation timestamp via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server-generated last update timestamp via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "title", "description", "category", "accentColor", "status", "createdAt", "updatedAt"]
+    },
+    "Milestone": {
+      "title": "Milestone",
+      "description": "A key checkpoint or deliverable deadline within a project.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated owner UID."
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Parent project document ID."
+        },
+        "title": {
+          "type": "string",
+          "description": "Milestone title (1-120 chars)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Milestone details (0-400 chars)."
+        },
+        "targetDateMs": {
+          "type": "integer",
+          "description": "Target milestone deadline epoch milliseconds."
+        },
+        "isReached": {
+          "type": "boolean",
+          "description": "Whether the milestone has been achieved."
+        },
+        "reachedAtMs": {
+          "type": "integer",
+          "description": "Optional epoch milliseconds when milestone was marked reached."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server-generated creation timestamp via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server-generated last update timestamp via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "projectId", "title", "description", "targetDateMs", "isReached", "createdAt", "updatedAt"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "An actionable task associated with a project and optionally a milestone and deadline.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated owner UID."
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Parent project document ID."
+        },
+        "milestoneId": {
+          "type": "string",
+          "description": "Optional linked milestone document ID."
+        },
+        "title": {
+          "type": "string",
+          "description": "Task title (1-140 chars)."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional task notes (0-500 chars)."
+        },
+        "isCompleted": {
+          "type": "boolean",
+          "description": "Whether the task is completed."
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "urgent"],
+          "description": "Task priority level."
+        },
+        "dueDateMs": {
+          "type": "integer",
+          "description": "Optional task deadline epoch milliseconds."
+        },
+        "completedAtMs": {
+          "type": "integer",
+          "description": "Optional epoch milliseconds when task was completed."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server-generated creation timestamp via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server-generated last update timestamp via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "projectId", "title", "notes", "isCompleted", "priority", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "User-owned personal projects."
+    },
+    "/users/{userId}/milestones/{milestoneId}": {
+      "schema": { "$ref": "#/entities/Milestone" },
+      "description": "User-owned project milestones."
+    },
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "User-owned project tasks and deadlines."
+    }
+  }
+}
